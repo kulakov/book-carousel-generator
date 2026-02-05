@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генерация карусели</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #1a1a24;
+            --accent: #c41e3a;
+            --text: #ffffff;
+            --text-muted: #888;
+            --border: #333;
+            --success: #22c55e;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 24px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Pipeline steps */
+        .pipeline {
+            display: flex;
+            justify-content: center;
+            padding: 30px;
+            gap: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            opacity: 0.5;
+        }
+
+        .pipeline-step.active {
+            opacity: 1;
+            background: var(--accent);
+        }
+
+        .pipeline-step.done {
+            opacity: 1;
+            background: var(--success);
+        }
+
+        .pipeline-step .number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .pipeline-step.done .number::after {
+            content: '✓';
+        }
+
+        .pipeline-step.done .number span { display: none; }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: 20px;
+        }
+
+        /* Main content */
+        .main {
+            padding: 30px 40px;
+        }
+
+        /* Stage: Texts */
+        .stage-texts {
+            margin-bottom: 40px;
+        }
+
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .stage-header h2 {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stage-status {
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: var(--bg-card);
+        }
+
+        .stage-status.generating { color: #fbbf24; }
+        .stage-status.done { color: var(--success); }
+
+        /* Slides grid */
+        .slides-row {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+        }
+
+        /* Slide card - Instagram 4:5 ratio */
+        .slide-frame {
+            flex-shrink: 0;
+            width: 324px; /* 1080 * 0.3 */
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .slide-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slide-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .slide-title {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .slide-trope {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        /* Slide content - actual banner preview */
+        .slide-content {
+            position: relative;
+            width: 324px;
+            height: 405px; /* 4:5 ratio */
+            background: linear-gradient(to bottom, #1a1a2e, #0f0f1a);
+            overflow: hidden;
+        }
+
+        .slide-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .slide-bg.loaded { opacity: 1; }
+
+        .slide-bg img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+        .slide-html {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2;
+            padding: 18px;
+            pointer-events: none;
+        }
+
+        /* Progress overlay */
+        .slide-progress {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 12px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            z-index: 10;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-bottom: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Slide HTML content styles */
+        .slide-html .headline {
+            margin-bottom: 15px;
+        }
+
+        .slide-html .headline h2 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            line-height: 1.1;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        }
+
+        .slide-html .list-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .slide-html .list-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .slide-html .list-row .icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--accent);
+            font-size: 14px;
+        }
+
+        .slide-html .list-row .text {
+            font-size: 12px;
+            color: white;
+            line-height: 1.3;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .slide-html .quote {
+            font-size: 14px;
+            font-style: italic;
+            color: white;
+            line-height: 1.4;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+            border-left: 3px solid var(--accent);
+            padding-left: 12px;
+            margin: 20px 0;
+        }
+
+        .slide-html .logline {
+            font-size: 16px;
+            color: white;
+            line-height: 1.4;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+            text-align: center;
+            margin-top: 30%;
+        }
+
+        .slide-html .cta-text {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Oswald', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .slide-html .cta-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            padding: 10px 30px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .slide-html .author-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .slide-html .author-photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            margin: 0 auto 12px;
+        }
+
+        .slide-html .author-name {
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .slide-html .author-bio {
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.4;
+        }
+
+        /* Book zone indicator */
+        .book-zone {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            width: 90px;
+            height: 120px;
+            border: 2px dashed rgba(196,30,58,0.5);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: rgba(196,30,58,0.5);
+            text-align: center;
+        }
+
+        .book-zone.hidden { display: none; }
+
+        /* Actions bar */
+        .actions-bar {
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .actions-bar .info {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .actions-bar .buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Log panel */
+        .log-panel {
+            margin-top: 30px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .log-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-content {
+            padding: 16px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            color: var(--text-muted);
+        }
+
+        .log-content .log-line {
+            margin-bottom: 4px;
+        }
+
+        .log-content .log-line.success { color: var(--success); }
+        .log-content .log-line.error { color: #ef4444; }
+        .log-content .log-line.info { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Генерация карусели</h1>
+        <a href="carousel-builder.html" class="btn btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Назад к выбору
+        </a>
+    </header>
+
+    <!-- Pipeline -->
+    <div class="pipeline">
+        <div class="pipeline-step" id="step1">
+            <div class="number"><span>1</span></div>
+            <span>Генерация текстов</span>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step" id="step2">
+            <div class="number"><span>2</span></div>
+            <span>HTML-превью</span>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step" id="step3">
+            <div class="number"><span>3</span></div>
+            <span>Генерация фонов</span>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step" id="step4">
+            <div class="number"><span>4</span></div>
+            <span>Готово</span>
+        </div>
+    </div>
+
+    <main class="main">
+        <!-- Slides row -->
+        <div class="slides-row" id="slidesRow">
+            <!-- Will be generated by JS -->
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-bar">
+            <div class="info" id="statusInfo">Подготовка...</div>
+            <div class="buttons">
+                <button class="btn btn-secondary" id="btnStartBg" disabled onclick="startBgGeneration()">
+                    Сгенерировать фоны
+                </button>
+                <button class="btn btn-primary" id="btnDownload" disabled onclick="downloadAll()">
+                    Скачать всё
+                </button>
+            </div>
+        </div>
+
+        <!-- Log -->
+        <div class="log-panel">
+            <div class="log-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Лог генерации
+            </div>
+            <div class="log-content" id="logContent">
+                <div class="log-line info">Запуск генератора карусели...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // =============================================
+        // BOOK DATA (hardcoded for "СКОРАЯ")
+        // =============================================
+        const BOOK = {
+            title: 'СКОРАЯ',
+            author: 'Автор',
+            genre: 'Философская фантастика / Антиутопия',
+            coverPath: '/Users/lance/lance-claude/09-СПРАВОЧНИКИ/my-promts/claude/claude-artifacts/lesson-modules/3-nano-banana/outputs/skoraya_clean/cover.png'
+        };
+
+        // =============================================
+        // TROPE CONTENT TEMPLATES
+        // =============================================
+        const TROPE_CONTENT = {
+            'A4': {
+                name: 'Цитата-зацепка',
+                html: `
+                    <div class="quote">
+                        «Смерть — это не конец. Это начало чего-то гораздо хуже.»
+                    </div>
+                `,
+                bgPrompt: `Dark atmospheric forest background with misty trees.
+                    Moody, mysterious. Deep blues and blacks with subtle red glow at bottom.
+                    Leave LEFT SIDE empty for text quote.
+                    Place 3D book "СКОРАЯ" in BOTTOM-RIGHT corner, small (20% of width).
+                    No text, no UI. Format: 1080x1350 (4:5)`
+            },
+            'B1': {
+                name: 'Bullet-лист аудитории',
+                html: `
+                    <div class="headline"><h2>Эта книга для вас, если:</h2></div>
+                    <div class="list-rows">
+                        <div class="list-row"><span class="icon">→</span><span class="text">Любите антиутопии и философскую фантастику</span></div>
+                        <div class="list-row"><span class="icon">→</span><span class="text">Цените короткие, но глубокие тексты</span></div>
+                        <div class="list-row"><span class="icon">→</span><span class="text">Задаётесь вопросами о смысле жизни</span></div>
+                        <div class="list-row"><span class="icon">→</span><span class="text">Хотите свежий взгляд на тему бессмертия</span></div>
+                    </div>
+                `,
+                bgPrompt: `Dark gradient background for book marketing.
+                    Smooth gradient from dark gray #2a2a2a at top to black #1a1a1a at bottom.
+                    Subtle texture. Leave TOP-LEFT area (60% width, 70% height) EMPTY for text overlay.
+                    Place 3D book in BOTTOM-RIGHT corner.
+                    No text, no UI. Format: 1080x1350 (4:5)`
+            },
+            'C1': {
+                name: 'Логлайн',
+                html: `
+                    <div class="logline">
+                        Человек, который не может умереть,<br>ищет смысл жизни
+                    </div>
+                `,
+                bgPrompt: `Atmospheric dark background with abstract shapes.
+                    Deep blue-black tones with subtle light rays.
+                    CENTER area should be clear for text.
+                    Place 3D book at BOTTOM, centered, medium size.
+                    Cinematic mood. No text. Format: 1080x1350 (4:5)`
+            },
+            'C3': {
+                name: 'Тизер конфликта',
+                html: `
+                    <div class="logline">
+                        Бессмертие.<br>Одиночество.<br>Выбор.
+                    </div>
+                `,
+                bgPrompt: `Dramatic dark background with duality theme.
+                    Split feeling - dark on one side, subtle red glow on other.
+                    Leave CENTER for text. Book in BOTTOM area.
+                    Mysterious, tense atmosphere. No text. Format: 1080x1350 (4:5)`
+            },
+            'E1': {
+                name: 'Об авторе',
+                html: `
+                    <div class="headline" style="text-align:center"><h2>Об авторе</h2></div>
+                    <div class="author-section">
+                        <div class="author-photo"></div>
+                        <div class="author-name">Имя Автора</div>
+                        <div class="author-bio">
+                            Писатель, исследователь человеческой природы.<br>
+                            Автор философской прозы.
+                        </div>
+                    </div>
+                `,
+                bgPrompt: `Elegant dark background for author bio slide.
+                    Subtle gradient, professional feel.
+                    Leave TOP HALF for photo and text.
+                    Place 3D book in BOTTOM-RIGHT, small.
+                    No text, no UI. Format: 1080x1350 (4:5)`
+            },
+            'G1': {
+                name: 'Призыв к действию',
+                html: `
+                    <div class="cta-text">Готовы начать?</div>
+                    <div class="cta-button">Читать сейчас</div>
+                `,
+                bgPrompt: `Dramatic spotlight background for CTA slide.
+                    Dark base with warm red/orange spotlight from below.
+                    CENTER should have space for large book with glow effect.
+                    Place 3D book prominently in CENTER, large (40% of height).
+                    Dramatic lighting, urgency feel. No text. Format: 1080x1350 (4:5)`
+            },
+            // Default for unknown tropes
+            'default': {
+                name: 'Слайд',
+                html: `<div class="logline">Текст слайда</div>`,
+                bgPrompt: `Dark gradient background for book marketing slide.
+                    Professional, clean. Place 3D book in corner.
+                    No text. Format: 1080x1350 (4:5)`
+            }
+        };
+
+        // =============================================
+        // STATE
+        // =============================================
+        let slides = [];
+        let currentStep = 0;
+        let bgGenerationStarted = false;
+
+        // =============================================
+        // LOGGING
+        // =============================================
+        function log(message, type = '') {
+            const logContent = document.getElementById('logContent');
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContent.appendChild(line);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // =============================================
+        // PIPELINE
+        // =============================================
+        function setStep(step) {
+            currentStep = step;
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`step${i}`);
+                el.classList.remove('active', 'done');
+                if (i < step) el.classList.add('done');
+                if (i === step) el.classList.add('active');
+            }
+        }
+
+        // =============================================
+        // RENDER SLIDES
+        // =============================================
+        function renderSlides() {
+            const container = document.getElementById('slidesRow');
+            container.innerHTML = slides.map((slide, index) => {
+                const content = TROPE_CONTENT[slide.tropeId] || TROPE_CONTENT['default'];
+                return `
+                    <div class="slide-frame" data-index="${index}">
+                        <div class="slide-header">
+                            <div class="slide-number">${index + 1}</div>
+                            <div class="slide-title">${content.name}</div>
+                            <div class="slide-trope">${slide.tropeId}</div>
+                        </div>
+                        <div class="slide-content">
+                            <div class="slide-bg ${slide.bgLoaded ? 'loaded' : ''}" id="bg-${index}">
+                                ${slide.bgUrl ? `<img src="${slide.bgUrl}" alt="">` : ''}
+                            </div>
+                            <div class="slide-html">
+                                ${content.html}
+                            </div>
+                            <div class="book-zone ${slide.bgLoaded ? 'hidden' : ''}">
+                                Зона для<br>книги
+                            </div>
+                            <div class="slide-progress" id="progress-${index}" ${slide.bgLoaded ? 'style="display:none"' : ''}>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${slide.progress || 0}%"></div>
+                                </div>
+                                <div class="progress-text">${slide.progressText || 'Ожидание...'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateSlideProgress(index, progress, text) {
+            slides[index].progress = progress;
+            slides[index].progressText = text;
+
+            const progressEl = document.getElementById(`progress-${index}`);
+            if (progressEl) {
+                progressEl.querySelector('.progress-fill').style.width = `${progress}%`;
+                progressEl.querySelector('.progress-text').textContent = text;
+            }
+        }
+
+        function setSlideBackground(index, url) {
+            slides[index].bgUrl = url;
+            slides[index].bgLoaded = true;
+
+            const bgEl = document.getElementById(`bg-${index}`);
+            if (bgEl) {
+                bgEl.innerHTML = `<img src="${url}" alt="">`;
+                bgEl.classList.add('loaded');
+            }
+
+            const progressEl = document.getElementById(`progress-${index}`);
+            if (progressEl) progressEl.style.display = 'none';
+
+            // Hide book zone
+            const frame = document.querySelector(`[data-index="${index}"]`);
+            if (frame) {
+                const bookZone = frame.querySelector('.book-zone');
+                if (bookZone) bookZone.classList.add('hidden');
+            }
+        }
+
+        // =============================================
+        // GENERATION
+        // =============================================
+        async function startTextGeneration() {
+            setStep(1);
+            log('Начинаем генерацию текстов для слайдов...', 'info');
+
+            // Simulate text generation (in real app, this would call Claude API)
+            for (let i = 0; i < slides.length; i++) {
+                await delay(300);
+                const content = TROPE_CONTENT[slides[i].tropeId] || TROPE_CONTENT['default'];
+                log(`Слайд ${i + 1}: ${content.name} — текст готов`);
+            }
+
+            log('Все тексты сгенерированы!', 'success');
+            setStep(2);
+
+            // Enable BG generation button
+            document.getElementById('btnStartBg').disabled = false;
+            document.getElementById('statusInfo').textContent =
+                'HTML-превью готовы. Нажмите "Сгенерировать фоны" для запуска Gemini.';
+        }
+
+        // API endpoint (change to your server URL)
+        const API_URL = 'http://localhost:5050';
+        let useRealAPI = false; // Set to true when server is running
+
+        async function startBgGeneration() {
+            if (bgGenerationStarted) return;
+            bgGenerationStarted = true;
+
+            setStep(3);
+            document.getElementById('btnStartBg').disabled = true;
+            document.getElementById('statusInfo').textContent = 'Генерация фонов через Gemini API...';
+
+            log('Запуск генерации фонов через Nano Banana...', 'info');
+
+            for (let i = 0; i < slides.length; i++) {
+                const tropeId = slides[i].tropeId;
+                const content = TROPE_CONTENT[tropeId] || TROPE_CONTENT['default'];
+
+                log(`Слайд ${i + 1} (${content.name}): отправляем запрос...`, 'info');
+                updateSlideProgress(i, 10, 'Подготовка промпта...');
+
+                let bgUrl;
+
+                if (useRealAPI) {
+                    // Call real API
+                    try {
+                        updateSlideProgress(i, 20, 'Отправка в Gemini...');
+
+                        const response = await fetch(`${API_URL}/api/generate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tropeId, slideIndex: i })
+                        });
+
+                        // Poll for progress (simplified - in production use WebSocket)
+                        updateSlideProgress(i, 50, 'Генерация изображения...');
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            bgUrl = `${API_URL}${result.imageUrl}?t=${Date.now()}`;
+                            log(`Слайд ${i + 1}: фон сгенерирован!`, 'success');
+                        } else {
+                            log(`Слайд ${i + 1}: ошибка - ${result.error}`, 'error');
+                            updateSlideProgress(i, 0, 'Ошибка генерации');
+                            continue;
+                        }
+                    } catch (err) {
+                        log(`Слайд ${i + 1}: ошибка подключения - ${err.message}`, 'error');
+                        updateSlideProgress(i, 0, 'Ошибка подключения');
+                        continue;
+                    }
+                } else {
+                    // Simulation mode - show progress animation
+                    await delay(500);
+                    updateSlideProgress(i, 30, 'Отправка в Gemini...');
+                    await delay(800);
+                    updateSlideProgress(i, 50, 'Генерация изображения...');
+                    await delay(1500);
+                    updateSlideProgress(i, 80, 'Обработка результата...');
+                    await delay(500);
+
+                    // Use test image (same for all in simulation)
+                    bgUrl = `../test/outputs/insta_bg.png?slide=${i}&t=${Date.now()}`;
+                    log(`Слайд ${i + 1}: фон готов (симуляция)`, 'success');
+                }
+
+                updateSlideProgress(i, 100, 'Готово!');
+                await delay(300);
+                setSlideBackground(i, bgUrl);
+            }
+
+            setStep(4);
+            document.getElementById('btnDownload').disabled = false;
+            document.getElementById('statusInfo').textContent = 'Готово! Все слайды сгенерированы.';
+            log('Генерация завершена!', 'success');
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function downloadAll() {
+            log('Подготовка архива для скачивания...', 'info');
+            alert('Функция скачивания будет доступна после интеграции с Python backend');
+        }
+
+        // =============================================
+        // INIT
+        // =============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Get selected tropes from localStorage
+            const selectedTropes = JSON.parse(localStorage.getItem('carouselSelection') || '[]');
+
+            if (selectedTropes.length === 0) {
+                log('Нет выбранных слайдов. Вернитесь в конструктор.', 'error');
+                document.getElementById('statusInfo').textContent = 'Нет выбранных слайдов';
+                return;
+            }
+
+            log(`Загружено ${selectedTropes.length} слайдов из конструктора`, 'info');
+
+            // Build slides array
+            slides = selectedTropes.map(tropeId => ({
+                tropeId,
+                progress: 0,
+                progressText: 'Ожидание...',
+                bgUrl: '',
+                bgLoaded: false
+            }));
+
+            renderSlides();
+
+            // Start text generation
+            await delay(500);
+            startTextGeneration();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Carousel Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #1a1a24;
+            --bg-card-hover: #252532;
+            --accent: #c41e3a;
+            --accent-light: #ff3d5a;
+            --text: #ffffff;
+            --text-muted: #888;
+            --border: #333;
+            --success: #22c55e;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Steps indicator */
+        .steps-header {
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            background: var(--bg-dark);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
+        .step-item.active {
+            opacity: 1;
+        }
+
+        .step-item.completed {
+            opacity: 0.8;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .step-item.active .step-number {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .step-item.completed .step-number {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .step-label {
+            font-size: 14px;
+        }
+
+        /* Step containers */
+        .step-container {
+            display: none;
+            min-height: calc(100vh - 80px);
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        /* ========================================
+           STEP 1: Book Input
+           ======================================== */
+        .book-input-step {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .book-input-step h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .book-input-step .subtitle {
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .input-section h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-group .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Cover upload */
+        .cover-upload {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cover-upload:hover {
+            border-color: var(--accent);
+            background: rgba(196, 30, 58, 0.05);
+        }
+
+        .cover-upload.has-image {
+            padding: 0;
+            border-style: solid;
+        }
+
+        .cover-upload img {
+            width: 100%;
+            height: 300px;
+            object-fit: contain;
+            background: var(--bg-card);
+        }
+
+        .cover-upload .upload-text {
+            color: var(--text-muted);
+        }
+
+        .cover-upload .upload-text svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .cover-upload input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Genre detection */
+        .genre-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 14px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .genre-badge.detected {
+            border-color: var(--accent);
+            background: rgba(196, 30, 58, 0.1);
+        }
+
+        /* Action buttons */
+        .actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+        }
+
+        .btn-primary:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+        }
+
+        .btn-large {
+            padding: 16px 32px;
+            font-size: 16px;
+        }
+
+        /* ========================================
+           STEP 2: Trope Selection
+           ======================================== */
+        .header {
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h2 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .selected-count {
+            background: var(--bg-card);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .selected-count span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Main layout */
+        .main {
+            display: flex;
+            min-height: calc(100vh - 150px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            padding: 20px;
+            border-right: 1px solid var(--border);
+            position: sticky;
+            top: 150px;
+            height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .category-filter {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 24px;
+        }
+
+        .category-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .category-btn:hover {
+            background: var(--bg-card);
+        }
+
+        .category-btn.active {
+            background: var(--bg-card);
+            color: var(--accent);
+        }
+
+        .category-btn .badge {
+            background: var(--bg-card);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .category-btn.active .badge {
+            background: var(--accent);
+            color: white;
+        }
+
+        .preset-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .preset-btn {
+            width: 100%;
+            padding: 10px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-card);
+            border-color: var(--accent);
+        }
+
+        .preset-btn.recommended {
+            border-color: var(--accent);
+            background: rgba(196, 30, 58, 0.1);
+        }
+
+        /* Content */
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .tropes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        /* Trope card */
+        .trope-card {
+            background: var(--bg-card);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .trope-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+
+        .trope-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(196, 30, 58, 0.3);
+        }
+
+        .trope-card.recommended {
+            border-color: rgba(196, 30, 58, 0.5);
+        }
+
+        .trope-card.recommended::before {
+            content: 'REC';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            padding: 2px 6px;
+            background: var(--accent);
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            border-radius: 4px;
+            z-index: 5;
+        }
+
+        .trope-card.selected::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        .trope-card.selected .check-icon {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1;
+        }
+
+        .card-preview {
+            height: 140px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-element {
+            position: absolute;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+
+        .preview-book {
+            background: linear-gradient(135deg, #c41e3a, #8b1528);
+            border-radius: 2px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .preview-text {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .preview-headline {
+            background: rgba(255,255,255,0.3);
+            height: 8px;
+        }
+
+        .preview-circle {
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .card-info {
+            padding: 14px;
+        }
+
+        .card-category {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--accent);
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .card-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Selected Panel */
+        .selected-panel {
+            width: 280px;
+            padding: 20px;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .selected-panel h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .selected-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .selected-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            cursor: move;
+        }
+
+        .selected-item .number {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .selected-item .name {
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .selected-item .remove {
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+        }
+
+        .selected-item .remove:hover {
+            background: rgba(255,0,0,0.2);
+            color: #ff4444;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .generate-section {
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            margin-top: auto;
+        }
+
+        .generate-section .btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 15px;
+        }
+
+        /* Back button in step 2 */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        /* Category colors */
+        [data-category="attention"] .card-preview { background: linear-gradient(135deg, #2d1f3d, #1a1a2e); }
+        [data-category="targeting"] .card-preview { background: linear-gradient(135deg, #1f2d3d, #1a1a2e); }
+        [data-category="content"] .card-preview { background: linear-gradient(135deg, #1f3d2d, #1a1a2e); }
+        [data-category="proof"] .card-preview { background: linear-gradient(135deg, #3d2d1f, #1a1a2e); }
+        [data-category="authority"] .card-preview { background: linear-gradient(135deg, #3d1f2d, #1a1a2e); }
+        [data-category="specs"] .card-preview { background: linear-gradient(135deg, #1f3d3d, #1a1a2e); }
+        [data-category="cta"] .card-preview { background: linear-gradient(135deg, #3d1f1f, #1a1a2e); }
+
+        /* Book preview card */
+        .book-preview-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .book-preview-card img {
+            width: 80px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .book-preview-card .book-info h4 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .book-preview-card .book-info .author {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .book-preview-card .book-info .genres {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .book-preview-card .book-info .genres span {
+            font-size: 11px;
+            padding: 3px 8px;
+            background: rgba(196, 30, 58, 0.2);
+            border-radius: 10px;
+            color: var(--accent-light);
+        }
+
+        /* Loading state */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 10, 15, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Steps Header -->
+    <div class="steps-header">
+        <div class="step-item active" id="stepIndicator1">
+            <div class="step-number">1</div>
+            <div class="step-label">Данные книги</div>
+        </div>
+        <div class="step-item" id="stepIndicator2">
+            <div class="step-number">2</div>
+            <div class="step-label">Выбор тропов</div>
+        </div>
+        <div class="step-item" id="stepIndicator3">
+            <div class="step-number">3</div>
+            <div class="step-label">Генерация</div>
+        </div>
+    </div>
+
+    <!-- STEP 1: Book Input -->
+    <div class="step-container active" id="step1">
+        <div class="book-input-step">
+            <h1>Создать карусель для книги</h1>
+            <p class="subtitle">Введите данные о книге для анализа и генерации маркетинговых материалов</p>
+
+            <div class="input-grid">
+                <div class="input-section">
+                    <h3>Источник</h3>
+
+                    <div class="form-group">
+                        <label>Ссылка на книгу (маркетплейс или selfpub)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="url" id="rideroUrl" placeholder="https://litres.ru/book/... или ridero.ru, ozon.ru, wildberries.ru" style="flex: 1;" />
+                            <button class="btn btn-primary" onclick="fetchBookFromUrl()" id="btnFetch" style="white-space: nowrap;">
+                                Загрузить
+                            </button>
+                        </div>
+                        <p class="hint" id="fetchHint">Поддерживаются: Litres, Ridero, Ozon, Wildberries</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Название книги</label>
+                        <input type="text" id="bookTitle" placeholder="Название книги" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Автор</label>
+                        <input type="text" id="bookAuthor" placeholder="Имя автора" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Жанр</label>
+                        <select id="bookGenre">
+                            <option value="">— Определить автоматически —</option>
+                            <option value="dystopia_philosophy">Антиутопия / Философская фантастика</option>
+                            <option value="selfhelp">Саморазвитие / Психология</option>
+                            <option value="thriller">Триллер / Детектив</option>
+                            <option value="romance">Роман / Romance</option>
+                            <option value="business">Бизнес / Научпоп</option>
+                            <option value="fantasy">Фэнтези</option>
+                            <option value="scifi">Научная фантастика</option>
+                            <option value="horror">Хоррор</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Описание / Аннотация</label>
+                        <textarea id="bookDescription" placeholder="Введите аннотацию книги или текст для анализа..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Цитаты из книги (опционально)</label>
+                        <textarea id="bookQuotes" placeholder="Сильные цитаты из книги, по одной на строку..."></textarea>
+                        <p class="hint">Эти цитаты будут использованы для создания хуков</p>
+                    </div>
+                </div>
+
+                <div class="input-section">
+                    <h3>Обложка</h3>
+
+                    <div class="cover-upload" id="coverUpload">
+                        <div class="upload-text">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"/>
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            </svg>
+                            <p>Загрузите обложку книги</p>
+                            <p style="font-size: 12px; margin-top: 4px;">PNG, JPG до 5MB</p>
+                        </div>
+                        <input type="file" id="coverFile" accept="image/*" />
+                    </div>
+
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>Или URL обложки</label>
+                        <input type="url" id="coverUrl" placeholder="https://..." />
+                    </div>
+
+                    <h3 style="margin-top: 32px;">Дополнительно</h3>
+
+                    <div class="form-group">
+                        <label>Краткая биография автора</label>
+                        <textarea id="authorBio" placeholder="Информация об авторе для слайда E1 (Био + Фото)..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Отзывы / Рейтинги</label>
+                        <textarea id="bookReviews" placeholder="Рейтинг на Литрес: 4.9&#10;«Не мог оторваться!» — Иван П."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions-row">
+                <div>
+                    <button class="btn btn-secondary" onclick="loadSampleData()">
+                        Загрузить пример (СКОРАЯ)
+                    </button>
+                </div>
+                <button class="btn btn-primary btn-large" onclick="analyzeAndProceed()" id="btnAnalyze">
+                    Анализировать и продолжить
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 2: Trope Selection -->
+    <div class="step-container" id="step2">
+        <header class="header">
+            <div>
+                <span class="back-link" onclick="goToStep(1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Назад к данным
+                </span>
+                <h2 style="margin-top: 8px;">Выберите тропы для карусели</h2>
+            </div>
+            <div class="header-actions">
+                <div class="selected-count">Выбрано: <span id="countDisplay">0</span> / 10</div>
+                <button class="btn btn-secondary" onclick="clearSelection()">Сбросить</button>
+                <button class="btn btn-primary" id="generateBtn" onclick="generateCarousel()" disabled>
+                    Сгенерировать карусель
+                </button>
+            </div>
+        </header>
+
+        <main class="main">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Book preview -->
+                <div class="book-preview-card" id="bookPreviewCard" style="display: none;">
+                    <img id="previewCover" src="" alt="Cover" />
+                    <div class="book-info">
+                        <h4 id="previewTitle">—</h4>
+                        <p class="author" id="previewAuthor">—</p>
+                        <div class="genres" id="previewGenres"></div>
+                    </div>
+                </div>
+
+                <h3>Категории</h3>
+                <div class="category-filter">
+                    <button class="category-btn active" data-filter="all">
+                        <span>Все</span>
+                        <span class="badge">35</span>
+                    </button>
+                    <button class="category-btn" data-filter="attention">
+                        <span>A. Хуки</span>
+                        <span class="badge">5</span>
+                    </button>
+                    <button class="category-btn" data-filter="targeting">
+                        <span>B. Для кого</span>
+                        <span class="badge">5</span>
+                    </button>
+                    <button class="category-btn" data-filter="content">
+                        <span>C. О чём</span>
+                        <span class="badge">6</span>
+                    </button>
+                    <button class="category-btn" data-filter="proof">
+                        <span>D. Доказательства</span>
+                        <span class="badge">5</span>
+                    </button>
+                    <button class="category-btn" data-filter="authority">
+                        <span>E. Автор</span>
+                        <span class="badge">4</span>
+                    </button>
+                    <button class="category-btn" data-filter="specs">
+                        <span>F. Характеристики</span>
+                        <span class="badge">4</span>
+                    </button>
+                    <button class="category-btn" data-filter="cta">
+                        <span>G. Призыв</span>
+                        <span class="badge">5</span>
+                    </button>
+                </div>
+
+                <div class="preset-section">
+                    <h3>Рекомендации</h3>
+                    <button class="preset-btn recommended" id="recommendedPreset" onclick="applyRecommended()">
+                        Применить для вашего жанра
+                    </button>
+                    <h3 style="margin-top: 16px;">Готовые наборы</h3>
+                    <button class="preset-btn" onclick="applyPreset('dystopia')">
+                        Антиутопия / Философия
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('selfhelp')">
+                        Саморазвитие
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('thriller')">
+                        Триллер / Детектив
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('romance')">
+                        Роман
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('business')">
+                        Бизнес / Научпоп
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Tropes Grid -->
+            <section class="content">
+                <div class="tropes-grid" id="tropesGrid">
+                    <!-- Cards will be generated by JS -->
+                </div>
+            </section>
+
+            <!-- Selected Panel -->
+            <aside class="selected-panel">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                    </svg>
+                    Порядок слайдов
+                </h3>
+
+                <div class="selected-list" id="selectedList">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 4v16m-8-8h16"/>
+                        </svg>
+                        <p>Выберите тропы<br>из сетки слева</p>
+                    </div>
+                </div>
+
+                <div class="generate-section">
+                    <button class="btn btn-primary" id="generateBtn2" onclick="generateCarousel()" disabled>
+                        Сгенерировать карусель
+                    </button>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Анализируем книгу...</p>
+        </div>
+    </div>
+
+    <script>
+        // =============================================
+        // BOOK DATA
+        // =============================================
+        let bookData = {
+            title: '',
+            author: '',
+            genre: '',
+            description: '',
+            quotes: [],
+            coverUrl: '',
+            authorBio: '',
+            reviews: '',
+            rideroUrl: ''
+        };
+
+        let recommendedTropes = [];
+
+        // =============================================
+        // TROPES DATA
+        // =============================================
+        const TROPES = [
+            // A. Attention (Хуки)
+            { id: 'A1', category: 'attention', name: 'Провокационный вопрос', desc: 'Вопрос, бьющий в боль аудитории', preview: 'question' },
+            { id: 'A2', category: 'attention', name: 'Шокирующая статистика', desc: 'Крупная цифра + утверждение', preview: 'stat' },
+            { id: 'A3', category: 'attention', name: 'Запретное знание', desc: '"Это не хотят, чтобы вы знали"', preview: 'forbidden' },
+            { id: 'A4', category: 'attention', name: 'Цитата-зацепка', desc: 'Мощная цитата из книги', preview: 'quote' },
+            { id: 'A5', category: 'attention', name: 'До / После', desc: 'Контраст до и после прочтения', preview: 'beforeafter' },
+
+            // B. Targeting (Для кого)
+            { id: 'B1', category: 'targeting', name: 'Bullet-лист аудитории', desc: '"Эта книга для вас, если:"', preview: 'bullets' },
+            { id: 'B2', category: 'targeting', name: 'Негативное таргетирование', desc: '"Эта книга НЕ для вас, если:"', preview: 'negative' },
+            { id: 'B3', category: 'targeting', name: 'Портрет читателя', desc: 'Описание идеального читателя', preview: 'avatar' },
+            { id: 'B4', category: 'targeting', name: 'Боли аудитории', desc: 'Список проблем, которые решает', preview: 'pain' },
+            { id: 'B5', category: 'targeting', name: 'Путь читателя', desc: 'Трансформация: было → стало', preview: 'journey' },
+
+            // C. Content (О чём)
+            { id: 'C1', category: 'content', name: 'Логлайн', desc: 'Одно предложение — суть книги', preview: 'logline' },
+            { id: 'C2', category: 'content', name: 'Погружение в сеттинг', desc: 'Визуальная атмосфера мира', preview: 'setting' },
+            { id: 'C3', category: 'content', name: 'Тизер конфликта', desc: 'Намёк на главный конфликт', preview: 'conflict' },
+            { id: 'C4', category: 'content', name: 'Темы книги', desc: 'Хештеги/теги как дизайн', preview: 'themes' },
+            { id: 'C5', category: 'content', name: 'Превью глав', desc: 'Названия глав как тизеры', preview: 'chapters' },
+            { id: 'C6', category: 'content', name: 'Ключевые выводы', desc: '"Из книги вы узнаете:"', preview: 'takeaways' },
+
+            // D. Proof (Доказательства)
+            { id: 'D1', category: 'proof', name: 'Рейтинги и отзывы', desc: 'Звёзды + цитата отзыва', preview: 'ratings' },
+            { id: 'D2', category: 'proof', name: 'Известные читатели', desc: 'Кто уже прочитал', preview: 'famous' },
+            { id: 'D3', category: 'proof', name: 'Достижения продаж', desc: 'Тиражи, топы, цифры', preview: 'sales' },
+            { id: 'D4', category: 'proof', name: 'Упоминания в СМИ', desc: 'Логотипы изданий', preview: 'media' },
+            { id: 'D5', category: 'proof', name: 'Награды', desc: 'Премии и номинации', preview: 'awards' },
+
+            // E. Authority (Автор)
+            { id: 'E1', category: 'authority', name: 'Био + Фото', desc: 'Портрет и краткая биография', preview: 'bio' },
+            { id: 'E2', category: 'authority', name: 'Экспертиза', desc: 'Credentials автора', preview: 'credentials' },
+            { id: 'E3', category: 'authority', name: 'История автора', desc: 'Личная история создания', preview: 'story' },
+            { id: 'E4', category: 'authority', name: 'Другие работы', desc: 'Другие книги автора', preview: 'works' },
+
+            // F. Specs (Характеристики)
+            { id: 'F1', category: 'specs', name: 'Характеристики', desc: 'Страницы, формат, возраст', preview: 'specs' },
+            { id: 'F2', category: 'specs', name: 'Время чтения', desc: '"Читается за 3 вечера"', preview: 'time' },
+            { id: 'F3', category: 'specs', name: 'Форматы', desc: 'Бумага / E-book / Аудио', preview: 'formats' },
+            { id: 'F4', category: 'specs', name: 'Цена со скидкой', desc: 'Зачёркнутая старая цена', preview: 'price' },
+
+            // G. CTA (Призыв)
+            { id: 'G1', category: 'cta', name: 'Прямой призыв', desc: '"Добавить в корзину"', preview: 'cta' },
+            { id: 'G2', category: 'cta', name: 'Срочность', desc: 'Таймер, ограниченное время', preview: 'urgency' },
+            { id: 'G3', category: 'cta', name: 'Гарантия', desc: '"Не понравится — вернём"', preview: 'guarantee' },
+            { id: 'G4', category: 'cta', name: 'Тизер серии', desc: '"Книга 1 из трилогии"', preview: 'series' },
+            { id: 'G5', category: 'cta', name: 'Бонусы', desc: '+Чек-лист, +Аудио, +Workbook', preview: 'bonus' },
+        ];
+
+        // Presets
+        const PRESETS = {
+            dystopia: ['A4', 'B1', 'C1', 'C3', 'E1', 'G1'],
+            selfhelp: ['A1', 'B4', 'C6', 'D1', 'E2', 'G5'],
+            thriller: ['A3', 'A4', 'C3', 'D1', 'F2', 'G1'],
+            romance: ['A4', 'B3', 'C2', 'D1', 'E3', 'G4'],
+            business: ['A2', 'B4', 'C6', 'D2', 'E2', 'G5'],
+        };
+
+        // Genre to preset mapping
+        const GENRE_PRESETS = {
+            'dystopia_philosophy': 'dystopia',
+            'selfhelp': 'selfhelp',
+            'thriller': 'thriller',
+            'romance': 'romance',
+            'business': 'business',
+            'fantasy': 'dystopia',
+            'scifi': 'dystopia',
+            'horror': 'thriller'
+        };
+
+        // State
+        let selected = [];
+        let currentFilter = 'all';
+        let currentStep = 1;
+
+        // =============================================
+        // STEP NAVIGATION
+        // =============================================
+        function goToStep(step) {
+            currentStep = step;
+
+            // Update step indicators
+            document.querySelectorAll('.step-item').forEach((el, i) => {
+                el.classList.remove('active', 'completed');
+                if (i + 1 < step) el.classList.add('completed');
+                if (i + 1 === step) el.classList.add('active');
+            });
+
+            // Show correct container
+            document.querySelectorAll('.step-container').forEach((el, i) => {
+                el.classList.toggle('active', i + 1 === step);
+            });
+        }
+
+        // =============================================
+        // STEP 1: BOOK INPUT
+        // =============================================
+        function loadSampleData() {
+            document.getElementById('bookTitle').value = 'СКОРАЯ';
+            document.getElementById('bookAuthor').value = 'Автор';
+            document.getElementById('bookGenre').value = 'dystopia_philosophy';
+            document.getElementById('bookDescription').value = `Философская антиутопия о бессмертии как проклятии.
+В мире, где смерть побеждена, главный герой — врач скорой помощи — ищет смысл в вечности.
+Мрачная, задумчивая история о том, что делает нас людьми.`;
+            document.getElementById('bookQuotes').value = `Смерть — это не конец. Это начало чего-то гораздо хуже.
+Бессмертие оказалось тюрьмой без стен.
+Он жил вечно. И в этом была проблема.`;
+            document.getElementById('authorBio').value = 'Писатель, исследующий темные стороны технологического прогресса.';
+            document.getElementById('bookReviews').value = '4.9 на Литрес\n«Не мог оторваться до 3 ночи» — читатель';
+        }
+
+        // Fetch book data from URL
+        async function fetchBookFromUrl() {
+            const url = document.getElementById('rideroUrl').value.trim();
+            if (!url) {
+                document.getElementById('fetchHint').textContent = 'Введите URL книги';
+                document.getElementById('fetchHint').style.color = 'var(--accent)';
+                return;
+            }
+
+            const btn = document.getElementById('btnFetch');
+            const hint = document.getElementById('fetchHint');
+
+            btn.disabled = true;
+            btn.textContent = 'Загрузка...';
+            hint.textContent = 'Получаем данные...';
+            hint.style.color = 'var(--text-muted)';
+
+            try {
+                const apiUrl = `/api/fetch-book?url=${encodeURIComponent(url)}`;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Fill in the form fields
+                    if (data.title) {
+                        document.getElementById('bookTitle').value = data.title;
+                    }
+                    if (data.author) {
+                        document.getElementById('bookAuthor').value = data.author;
+                    }
+                    if (data.description) {
+                        document.getElementById('bookDescription').value = data.description;
+                    }
+                    if (data.coverUrl) {
+                        document.getElementById('coverUrl').value = data.coverUrl;
+                        bookData.coverUrl = data.coverUrl;
+                        // Show cover preview
+                        const upload = document.getElementById('coverUpload');
+                        upload.classList.add('has-image');
+                        upload.innerHTML = `<img src="${data.coverUrl}" alt="Cover" onerror="this.parentElement.classList.remove('has-image');this.parentElement.innerHTML='<div class=\\'upload-text\\'><p>Не удалось загрузить обложку</p></div>';" /><input type="file" id="coverFile" accept="image/*" />`;
+                    }
+                    if (data.rating) {
+                        const reviews = document.getElementById('bookReviews');
+                        let reviewText = `${data.rating} на ${data.platform}`;
+                        if (data.reviewCount) {
+                            reviewText += ` (${data.reviewCount} отзывов)`;
+                        }
+                        reviews.value = reviewText;
+                    }
+
+                    hint.textContent = `Загружено с ${data.platform}`;
+                    hint.style.color = 'var(--success)';
+                } else {
+                    hint.textContent = `Ошибка: ${data.error}`;
+                    hint.style.color = 'var(--accent)';
+                }
+            } catch (error) {
+                hint.textContent = `Ошибка: ${error.message}`;
+                hint.style.color = 'var(--accent)';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Загрузить';
+            }
+        }
+
+        // Cover upload handling
+        document.getElementById('coverFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    bookData.coverUrl = e.target.result;
+                    const upload = document.getElementById('coverUpload');
+                    upload.classList.add('has-image');
+                    upload.innerHTML = `<img src="${e.target.result}" alt="Cover" /><input type="file" id="coverFile" accept="image/*" />`;
+                    // Re-attach event listener
+                    document.getElementById('coverFile').addEventListener('change', arguments.callee);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function analyzeAndProceed() {
+            // Collect data
+            bookData.title = document.getElementById('bookTitle').value || 'Без названия';
+            bookData.author = document.getElementById('bookAuthor').value || 'Автор';
+            bookData.genre = document.getElementById('bookGenre').value;
+            bookData.description = document.getElementById('bookDescription').value;
+            bookData.quotes = document.getElementById('bookQuotes').value.split('\n').filter(q => q.trim());
+            bookData.authorBio = document.getElementById('authorBio').value;
+            bookData.reviews = document.getElementById('bookReviews').value;
+            bookData.rideroUrl = document.getElementById('rideroUrl').value;
+
+            if (!bookData.coverUrl) {
+                bookData.coverUrl = document.getElementById('coverUrl').value;
+            }
+
+            // Show loading
+            document.getElementById('loadingOverlay').classList.add('active');
+
+            // Simulate analysis (in real app, would call API)
+            setTimeout(() => {
+                // Auto-detect genre if not set
+                if (!bookData.genre && bookData.description) {
+                    bookData.genre = detectGenre(bookData.description);
+                }
+
+                // Set recommended tropes based on genre
+                const presetName = GENRE_PRESETS[bookData.genre] || 'dystopia';
+                recommendedTropes = PRESETS[presetName] || [];
+
+                // Update preview card
+                updateBookPreview();
+
+                // Hide loading
+                document.getElementById('loadingOverlay').classList.remove('active');
+
+                // Go to step 2
+                goToStep(2);
+                renderTropesGrid();
+            }, 1000);
+        }
+
+        function detectGenre(description) {
+            const text = description.toLowerCase();
+            if (text.includes('антиутопия') || text.includes('бессмерт') || text.includes('философ')) {
+                return 'dystopia_philosophy';
+            }
+            if (text.includes('убийств') || text.includes('детектив') || text.includes('триллер')) {
+                return 'thriller';
+            }
+            if (text.includes('любов') || text.includes('роман') || text.includes('отношен')) {
+                return 'romance';
+            }
+            if (text.includes('бизнес') || text.includes('успех') || text.includes('продуктивн')) {
+                return 'business';
+            }
+            if (text.includes('психолог') || text.includes('саморазвит') || text.includes('привычк')) {
+                return 'selfhelp';
+            }
+            return 'dystopia_philosophy'; // default
+        }
+
+        function updateBookPreview() {
+            const card = document.getElementById('bookPreviewCard');
+            if (bookData.title) {
+                card.style.display = 'flex';
+                document.getElementById('previewTitle').textContent = bookData.title;
+                document.getElementById('previewAuthor').textContent = bookData.author;
+
+                if (bookData.coverUrl) {
+                    document.getElementById('previewCover').src = bookData.coverUrl;
+                } else {
+                    document.getElementById('previewCover').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120" viewBox="0 0 80 120"><rect fill="%23c41e3a" width="80" height="120"/><text fill="white" x="40" y="60" text-anchor="middle" font-size="10">Cover</text></svg>';
+                }
+
+                const genresDiv = document.getElementById('previewGenres');
+                genresDiv.innerHTML = '';
+                if (bookData.genre) {
+                    const genreNames = {
+                        'dystopia_philosophy': 'Антиутопия',
+                        'selfhelp': 'Саморазвитие',
+                        'thriller': 'Триллер',
+                        'romance': 'Роман',
+                        'business': 'Бизнес',
+                        'fantasy': 'Фэнтези',
+                        'scifi': 'Sci-Fi',
+                        'horror': 'Хоррор'
+                    };
+                    genresDiv.innerHTML = `<span>${genreNames[bookData.genre] || bookData.genre}</span>`;
+                }
+            }
+        }
+
+        // =============================================
+        // STEP 2: TROPE SELECTION
+        // =============================================
+        function generatePreviewHTML(type) {
+            const previews = {
+                question: `
+                    <div class="preview-element preview-headline" style="left:15%;top:30%;width:70%;height:6px;"></div>
+                    <div class="preview-element preview-headline" style="left:20%;top:42%;width:60%;height:6px;"></div>
+                    <div class="preview-element" style="left:35%;top:55%;font-size:24px;color:rgba(255,255,255,0.2);">?</div>
+                    <div class="preview-element preview-book" style="right:10%;bottom:10%;width:25%;height:35%;"></div>
+                `,
+                stat: `
+                    <div class="preview-element" style="left:50%;top:25%;transform:translateX(-50%);font-size:28px;color:rgba(196,30,58,0.6);">87%</div>
+                    <div class="preview-element preview-headline" style="left:20%;top:55%;width:60%;height:5px;"></div>
+                    <div class="preview-element preview-book" style="right:10%;bottom:10%;width:25%;height:35%;"></div>
+                `,
+                forbidden: `
+                    <div class="preview-element" style="left:50%;top:20%;transform:translateX(-50%);font-size:24px;">🔒</div>
+                    <div class="preview-element preview-headline" style="left:15%;top:45%;width:70%;height:5px;"></div>
+                    <div class="preview-element preview-text" style="left:20%;top:58%;width:60%;height:12%;"></div>
+                    <div class="preview-element preview-book" style="right:10%;bottom:10%;width:22%;height:30%;"></div>
+                `,
+                quote: `
+                    <div class="preview-element" style="left:10%;top:25%;font-size:32px;color:rgba(196,30,58,0.5);">«</div>
+                    <div class="preview-element preview-text" style="left:20%;top:30%;width:60%;height:20%;"></div>
+                    <div class="preview-element" style="right:15%;top:52%;font-size:32px;color:rgba(196,30,58,0.5);">»</div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:22%;height:30%;"></div>
+                `,
+                beforeafter: `
+                    <div class="preview-element" style="left:10%;top:20%;width:35%;height:30%;background:rgba(255,0,0,0.15);border-radius:6px;"></div>
+                    <div class="preview-element" style="right:10%;top:20%;width:35%;height:30%;background:rgba(0,255,0,0.1);border-radius:6px;"></div>
+                    <div class="preview-element" style="left:45%;top:30%;font-size:16px;color:rgba(255,255,255,0.3);">→</div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                bullets: `
+                    <div class="preview-element preview-headline" style="left:10%;top:15%;width:50%;height:5px;"></div>
+                    <div class="preview-element" style="left:10%;top:30%;width:6px;height:6px;background:var(--accent);border-radius:50%;"></div>
+                    <div class="preview-element preview-text" style="left:22%;top:28%;width:55%;height:8%;"></div>
+                    <div class="preview-element" style="left:10%;top:45%;width:6px;height:6px;background:var(--accent);border-radius:50%;"></div>
+                    <div class="preview-element preview-text" style="left:22%;top:43%;width:50%;height:8%;"></div>
+                    <div class="preview-element" style="left:10%;top:60%;width:6px;height:6px;background:var(--accent);border-radius:50%;"></div>
+                    <div class="preview-element preview-text" style="left:22%;top:58%;width:52%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:22%;height:30%;"></div>
+                `,
+                negative: `
+                    <div class="preview-element preview-headline" style="left:10%;top:15%;width:55%;height:5px;background:rgba(255,100,100,0.3);"></div>
+                    <div class="preview-element" style="left:10%;top:30%;color:rgba(255,100,100,0.5);font-size:10px;">✗</div>
+                    <div class="preview-element preview-text" style="left:22%;top:28%;width:55%;height:8%;"></div>
+                    <div class="preview-element" style="left:10%;top:45%;color:rgba(255,100,100,0.5);font-size:10px;">✗</div>
+                    <div class="preview-element preview-text" style="left:22%;top:43%;width:50%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:22%;height:30%;"></div>
+                `,
+                avatar: `
+                    <div class="preview-element preview-circle" style="left:50%;top:20%;transform:translateX(-50%);width:50px;height:50px;"></div>
+                    <div class="preview-element preview-headline" style="left:30%;top:55%;width:40%;height:4px;"></div>
+                    <div class="preview-element preview-text" style="left:20%;top:65%;width:60%;height:15%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:20%;height:28%;"></div>
+                `,
+                pain: `
+                    <div class="preview-element" style="left:10%;top:20%;width:8px;height:8px;background:rgba(255,100,100,0.4);border-radius:50%;"></div>
+                    <div class="preview-element preview-text" style="left:25%;top:18%;width:55%;height:10%;"></div>
+                    <div class="preview-element" style="left:10%;top:38%;width:8px;height:8px;background:rgba(255,100,100,0.4);border-radius:50%;"></div>
+                    <div class="preview-element preview-text" style="left:25%;top:36%;width:50%;height:10%;"></div>
+                    <div class="preview-element" style="left:10%;top:56%;width:8px;height:8px;background:rgba(255,100,100,0.4);border-radius:50%;"></div>
+                    <div class="preview-element preview-text" style="left:25%;top:54%;width:52%;height:10%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:22%;height:30%;"></div>
+                `,
+                journey: `
+                    <div class="preview-element" style="left:15%;top:25%;width:25%;height:20%;border-radius:6px;background:rgba(255,100,100,0.15);"></div>
+                    <div class="preview-element" style="left:50%;top:35%;font-size:14px;color:rgba(255,255,255,0.3);">→</div>
+                    <div class="preview-element" style="right:15%;top:25%;width:25%;height:20%;border-radius:6px;background:rgba(100,255,100,0.1);"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                logline: `
+                    <div class="preview-element preview-text" style="left:15%;top:35%;width:70%;height:15%;"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:30%;height:38%;"></div>
+                `,
+                setting: `
+                    <div class="preview-element" style="inset:0;background:linear-gradient(to bottom,rgba(0,0,50,0.3),rgba(0,0,0,0.5));"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:15%;transform:translateX(-50%);width:32%;height:40%;"></div>
+                `,
+                conflict: `
+                    <div class="preview-element preview-headline" style="left:30%;top:25%;width:40%;height:6px;"></div>
+                    <div class="preview-element preview-headline" style="left:35%;top:40%;width:30%;height:6px;"></div>
+                    <div class="preview-element preview-headline" style="left:32%;top:55%;width:36%;height:6px;"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:8%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                themes: `
+                    <div class="preview-element" style="left:15%;top:25%;padding:4px 8px;border-radius:10px;font-size:8px;background:rgba(196,30,58,0.2);">#</div>
+                    <div class="preview-element" style="left:40%;top:25%;padding:4px 8px;border-radius:10px;font-size:8px;background:rgba(196,30,58,0.2);">#</div>
+                    <div class="preview-element" style="left:65%;top:25%;padding:4px 8px;border-radius:10px;font-size:8px;background:rgba(196,30,58,0.2);">#</div>
+                    <div class="preview-element" style="left:25%;top:35%;padding:4px 8px;border-radius:10px;font-size:8px;background:rgba(196,30,58,0.2);">#</div>
+                    <div class="preview-element preview-book" style="left:50%;top:55%;transform:translateX(-50%);width:35%;height:40%;"></div>
+                `,
+                chapters: `
+                    <div class="preview-element preview-text" style="left:10%;top:20%;width:45%;height:8%;"></div>
+                    <div class="preview-element preview-text" style="left:10%;top:35%;width:50%;height:8%;"></div>
+                    <div class="preview-element preview-text" style="left:10%;top:50%;width:42%;height:8%;"></div>
+                    <div class="preview-element preview-text" style="left:10%;top:65%;width:48%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;top:50%;transform:translateY(-50%);width:28%;height:38%;"></div>
+                `,
+                takeaways: `
+                    <div class="preview-element preview-headline" style="left:10%;top:12%;width:55%;height:5px;"></div>
+                    <div class="preview-element" style="left:10%;top:25%;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;background:var(--accent);">1</div>
+                    <div class="preview-element preview-text" style="left:20%;top:26%;width:50%;height:6%;"></div>
+                    <div class="preview-element" style="left:10%;top:40%;width:15px;height:15px;border-radius:50%;font-size:8px;background:var(--accent);">2</div>
+                    <div class="preview-element preview-text" style="left:20%;top:41%;width:48%;height:6%;"></div>
+                    <div class="preview-element" style="left:10%;top:55%;width:15px;height:15px;border-radius:50%;font-size:8px;background:var(--accent);">3</div>
+                    <div class="preview-element preview-text" style="left:20%;top:56%;width:52%;height:6%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:22%;height:30%;"></div>
+                `,
+                ratings: `
+                    <div class="preview-element" style="left:30%;top:20%;width:40%;height:15px;display:flex;gap:3px;">
+                        <span style="color:gold;">★</span><span style="color:gold;">★</span><span style="color:gold;">★</span><span style="color:gold;">★</span><span style="color:gold;">★</span>
+                    </div>
+                    <div class="preview-element" style="left:35%;top:35%;font-size:24px;color:rgba(255,255,255,0.4);">4.9</div>
+                    <div class="preview-element preview-text" style="left:20%;top:55%;width:60%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:8%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                famous: `
+                    <div class="preview-element preview-circle" style="left:50%;top:25%;transform:translateX(-50%);width:60px;height:60px;"></div>
+                    <div class="preview-element preview-headline" style="left:30%;top:60%;width:40%;height:5px;"></div>
+                    <div class="preview-element preview-text" style="left:25%;top:70%;width:50%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:20%;height:28%;"></div>
+                `,
+                sales: `
+                    <div class="preview-element" style="left:15%;top:20%;width:30%;height:25%;border-radius:8px;background:rgba(196,30,58,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;">TOP</div>
+                    <div class="preview-element" style="left:55%;top:20%;width:30%;height:25%;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;">50K+</div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:32%;height:40%;"></div>
+                `,
+                media: `
+                    <div class="preview-element" style="left:15%;top:20%;width:20%;height:12%;border-radius:4px;"></div>
+                    <div class="preview-element" style="left:40%;top:20%;width:20%;height:12%;border-radius:4px;"></div>
+                    <div class="preview-element" style="left:65%;top:20%;width:20%;height:12%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:20%;top:45%;width:60%;height:10%;"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:8%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                awards: `
+                    <div class="preview-element" style="left:10%;top:15%;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg, gold, #b8860b);"></div>
+                    <div class="preview-element preview-book" style="left:50%;top:50%;transform:translate(-50%,-50%);width:35%;height:45%;"></div>
+                    <div class="preview-element preview-headline" style="left:25%;bottom:12%;width:50%;height:5px;"></div>
+                `,
+                bio: `
+                    <div class="preview-element preview-headline" style="left:30%;top:10%;width:40%;height:4px;"></div>
+                    <div class="preview-element preview-circle" style="left:50%;top:25%;transform:translateX(-50%);width:55px;height:55px;"></div>
+                    <div class="preview-element preview-headline" style="left:30%;top:60%;width:40%;height:4px;"></div>
+                    <div class="preview-element preview-text" style="left:20%;top:70%;width:60%;height:15%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:20%;height:28%;"></div>
+                `,
+                credentials: `
+                    <div class="preview-element preview-circle" style="left:50%;top:15%;transform:translateX(-50%);width:45px;height:45px;"></div>
+                    <div class="preview-element" style="left:12%;top:45%;width:8%;height:8%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:24%;top:45%;width:50%;height:8%;"></div>
+                    <div class="preview-element" style="left:12%;top:58%;width:8%;height:8%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:24%;top:58%;width:45%;height:8%;"></div>
+                    <div class="preview-element" style="left:12%;top:71%;width:8%;height:8%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:24%;top:71%;width:48%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:20%;height:28%;"></div>
+                `,
+                story: `
+                    <div class="preview-element" style="left:8%;top:25%;width:4%;height:20%;background:rgba(196,30,58,0.4);"></div>
+                    <div class="preview-element preview-text" style="left:15%;top:25%;width:70%;height:25%;"></div>
+                    <div class="preview-element preview-headline" style="right:15%;top:55%;width:30%;height:4px;font-style:italic;"></div>
+                    <div class="preview-element preview-book" style="right:10%;bottom:10%;width:28%;height:35%;"></div>
+                `,
+                works: `
+                    <div class="preview-element preview-headline" style="left:30%;top:10%;width:40%;height:4px;"></div>
+                    <div class="preview-element preview-book" style="left:12%;top:30%;width:18%;height:25%;opacity:0.5;"></div>
+                    <div class="preview-element preview-book" style="left:35%;top:30%;width:18%;height:25%;opacity:0.5;"></div>
+                    <div class="preview-element preview-book" style="left:58%;top:30%;width:18%;height:25%;opacity:0.5;"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:32%;height:40%;"></div>
+                    <div class="preview-element" style="left:38%;bottom:42%;padding:2px 6px;background:var(--accent);border-radius:4px;font-size:7px;">NEW</div>
+                `,
+                specs: `
+                    <div class="preview-element" style="left:12%;top:20%;width:10%;height:10%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:26%;top:21%;width:40%;height:8%;"></div>
+                    <div class="preview-element" style="left:12%;top:38%;width:10%;height:10%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:26%;top:39%;width:35%;height:8%;"></div>
+                    <div class="preview-element" style="left:12%;top:56%;width:10%;height:10%;border-radius:4px;"></div>
+                    <div class="preview-element preview-text" style="left:26%;top:57%;width:38%;height:8%;"></div>
+                    <div class="preview-element preview-book" style="right:8%;bottom:8%;width:22%;height:32%;"></div>
+                `,
+                time: `
+                    <div class="preview-element" style="left:50%;top:25%;transform:translateX(-50%);width:50px;height:50px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);"></div>
+                    <div class="preview-element" style="left:50%;top:50%;font-size:16px;color:rgba(255,255,255,0.4);transform:translateX(-50%);">3</div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                formats: `
+                    <div class="preview-element" style="left:18%;top:35%;width:18%;height:20%;border-radius:4px;"></div>
+                    <div class="preview-element" style="left:42%;top:35%;width:18%;height:20%;border-radius:4px;"></div>
+                    <div class="preview-element" style="left:66%;top:35%;width:18%;height:20%;border-radius:4px;"></div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                `,
+                price: `
+                    <div class="preview-element" style="left:50%;top:25%;transform:translateX(-50%);font-size:14px;color:rgba(255,255,255,0.3);text-decoration:line-through;">599</div>
+                    <div class="preview-element" style="left:50%;top:40%;transform:translateX(-50%);font-size:24px;color:rgba(196,30,58,0.8);">299</div>
+                    <div class="preview-element preview-book" style="left:50%;bottom:10%;transform:translateX(-50%);width:32%;height:40%;"></div>
+                `,
+                cta: `
+                    <div class="preview-element preview-headline" style="left:25%;top:15%;width:50%;height:5px;"></div>
+                    <div class="preview-element preview-book" style="left:50%;top:35%;transform:translateX(-50%);width:35%;height:40%;box-shadow:0 0 30px rgba(196,30,58,0.4);"></div>
+                    <div class="preview-element" style="left:30%;bottom:12%;width:40%;height:12%;border-radius:6px;background:var(--accent);"></div>
+                `,
+                urgency: `
+                    <div class="preview-element" style="left:25%;top:18%;width:50%;height:15%;border-radius:6px;background:rgba(255,60,60,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,100,100,0.6);">24:00</div>
+                    <div class="preview-element preview-book" style="left:50%;top:45%;transform:translateX(-50%);width:32%;height:38%;"></div>
+                    <div class="preview-element" style="left:30%;bottom:10%;width:40%;height:12%;border-radius:6px;background:rgba(255,60,60,0.5);"></div>
+                `,
+                guarantee: `
+                    <div class="preview-element" style="right:10%;top:12%;width:45px;height:45px;border-radius:50%;border:2px solid rgba(34,197,94,0.5);display:flex;align-items:center;justify-content:center;font-size:8px;color:rgba(34,197,94,0.6);">100%</div>
+                    <div class="preview-element preview-book" style="left:50%;top:45%;transform:translateX(-50%);width:32%;height:40%;"></div>
+                    <div class="preview-element preview-headline" style="left:20%;bottom:12%;width:60%;height:5px;"></div>
+                `,
+                series: `
+                    <div class="preview-element preview-headline" style="left:30%;top:10%;width:40%;height:4px;"></div>
+                    <div class="preview-element preview-book" style="left:15%;top:35%;width:20%;height:30%;opacity:0.4;"></div>
+                    <div class="preview-element preview-book" style="left:40%;top:30%;width:22%;height:35%;"></div>
+                    <div class="preview-element preview-book" style="left:65%;top:35%;width:20%;height:30%;opacity:0.4;"></div>
+                    <div class="preview-element preview-headline" style="left:30%;bottom:12%;width:40%;height:4px;"></div>
+                `,
+                bonus: `
+                    <div class="preview-element preview-headline" style="left:25%;top:10%;width:50%;height:4px;"></div>
+                    <div class="preview-element preview-book" style="left:50%;top:30%;transform:translateX(-50%);width:28%;height:35%;"></div>
+                    <div class="preview-element" style="left:20%;bottom:20%;width:18%;height:12%;border-radius:4px;background:rgba(34,197,94,0.2);"></div>
+                    <div class="preview-element" style="left:42%;bottom:20%;width:18%;height:12%;border-radius:4px;background:rgba(34,197,94,0.2);"></div>
+                    <div class="preview-element" style="left:64%;bottom:20%;width:18%;height:12%;border-radius:4px;background:rgba(34,197,94,0.2);"></div>
+                `,
+            };
+            return previews[type] || '';
+        }
+
+        function renderTropesGrid() {
+            const grid = document.getElementById('tropesGrid');
+            grid.innerHTML = '';
+
+            const filteredTropes = currentFilter === 'all'
+                ? TROPES
+                : TROPES.filter(t => t.category === currentFilter);
+
+            filteredTropes.forEach(trope => {
+                const isSelected = selected.includes(trope.id);
+                const isRecommended = recommendedTropes.includes(trope.id);
+                const card = document.createElement('div');
+                card.className = `trope-card ${isSelected ? 'selected' : ''} ${isRecommended ? 'recommended' : ''}`;
+                card.dataset.category = trope.category;
+                card.dataset.id = trope.id;
+                card.onclick = () => toggleTrope(trope.id);
+
+                card.innerHTML = `
+                    ${isSelected ? '<span class="check-icon">✓</span>' : ''}
+                    <div class="card-preview">
+                        ${generatePreviewHTML(trope.preview)}
+                    </div>
+                    <div class="card-info">
+                        <div class="card-category">${trope.id}</div>
+                        <div class="card-name">${trope.name}</div>
+                        <div class="card-desc">${trope.desc}</div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function renderSelectedList() {
+            const list = document.getElementById('selectedList');
+
+            if (selected.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 4v16m-8-8h16"/>
+                        </svg>
+                        <p>Выберите тропы<br>из сетки слева</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = selected.map((id, index) => {
+                const trope = TROPES.find(t => t.id === id);
+                return `
+                    <div class="selected-item" draggable="true" data-id="${id}">
+                        <div class="number">${index + 1}</div>
+                        <div class="name">${trope.name}</div>
+                        <button class="remove" onclick="removeTrope('${id}')">&times;</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateUI() {
+            document.getElementById('countDisplay').textContent = selected.length;
+
+            const canGenerate = selected.length >= 1;
+            document.getElementById('generateBtn').disabled = !canGenerate;
+            document.getElementById('generateBtn2').disabled = !canGenerate;
+
+            document.querySelectorAll('.trope-card').forEach(card => {
+                const isSelected = selected.includes(card.dataset.id);
+                card.classList.toggle('selected', isSelected);
+
+                // Update check icon
+                const checkIcon = card.querySelector('.check-icon');
+                if (isSelected && !checkIcon) {
+                    card.insertAdjacentHTML('afterbegin', '<span class="check-icon">✓</span>');
+                } else if (!isSelected && checkIcon) {
+                    checkIcon.remove();
+                }
+            });
+
+            renderSelectedList();
+        }
+
+        function toggleTrope(id) {
+            const index = selected.indexOf(id);
+            if (index === -1) {
+                if (selected.length < 10) {
+                    selected.push(id);
+                }
+            } else {
+                selected.splice(index, 1);
+            }
+            updateUI();
+        }
+
+        function removeTrope(id) {
+            const index = selected.indexOf(id);
+            if (index !== -1) {
+                selected.splice(index, 1);
+            }
+            updateUI();
+        }
+
+        function clearSelection() {
+            selected = [];
+            updateUI();
+        }
+
+        function applyPreset(presetName) {
+            selected = [...PRESETS[presetName]];
+            updateUI();
+        }
+
+        function applyRecommended() {
+            if (recommendedTropes.length > 0) {
+                selected = [...recommendedTropes];
+                updateUI();
+            }
+        }
+
+        function filterCategory(category) {
+            currentFilter = category;
+
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === category);
+            });
+
+            renderTropesGrid();
+        }
+
+        function generateCarousel() {
+            if (selected.length === 0) return;
+
+            // Save all data to localStorage
+            localStorage.setItem('carouselSelection', JSON.stringify(selected));
+            localStorage.setItem('bookData', JSON.stringify(bookData));
+
+            // Redirect to generation page
+            window.location.href = 'generation.html';
+        }
+
+        // =============================================
+        // INIT
+        // =============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Category filter clicks
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterCategory(btn.dataset.filter);
+                });
+            });
+
+            // Check if returning from generation page
+            const savedBookData = localStorage.getItem('bookData');
+            if (savedBookData) {
+                bookData = JSON.parse(savedBookData);
+                // Restore form fields
+                document.getElementById('bookTitle').value = bookData.title || '';
+                document.getElementById('bookAuthor').value = bookData.author || '';
+                document.getElementById('bookGenre').value = bookData.genre || '';
+                document.getElementById('bookDescription').value = bookData.description || '';
+            }
+        });
+    </script>
+</body>
+</html>
